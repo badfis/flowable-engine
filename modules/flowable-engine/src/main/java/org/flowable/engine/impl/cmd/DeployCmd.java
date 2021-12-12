@@ -1,9 +1,9 @@
 /* Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -11,13 +11,6 @@
  * limitations under the License.
  */
 package org.flowable.engine.impl.cmd;
-
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 import org.flowable.common.engine.api.FlowableException;
@@ -37,6 +30,9 @@ import org.flowable.engine.impl.repository.DeploymentBuilderImpl;
 import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.DeploymentProperties;
+
+import java.io.Serializable;
+import java.util.*;
 
 /**
  * @author Tom Baeyens
@@ -87,7 +83,7 @@ public class DeployCmd<T> implements Command<Deployment>, Serializable {
                 if (!deploymentEntities.isEmpty()) {
                     existingDeployments.add(deploymentEntities.get(0));
                 }
-                
+
             } else {
                 List<Deployment> deploymentList = processEngineConfiguration.getRepositoryService().createDeploymentQuery()
                         .deploymentName(deployment.getName())
@@ -111,6 +107,7 @@ public class DeployCmd<T> implements Command<Deployment>, Serializable {
         deployment.setNew(true);
 
         // Save the data
+        // 插入表act_re_deployment
         processEngineConfiguration.getDeploymentEntityManager().insert(deployment);
 
         if (StringUtils.isEmpty(deployment.getParentDeploymentId())) {
@@ -127,11 +124,13 @@ public class DeployCmd<T> implements Command<Deployment>, Serializable {
         }
 
         // Deployment settings
+        // 设置部署参数,有两个isBpmn20XsdValidationEnabled和isProcessValidationEnabled都是true,都是校验
         Map<String, Object> deploymentSettings = new HashMap<>();
         deploymentSettings.put(DeploymentSettings.IS_BPMN20_XSD_VALIDATION_ENABLED, deploymentBuilder.isBpmn20XsdValidationEnabled());
         deploymentSettings.put(DeploymentSettings.IS_PROCESS_VALIDATION_ENABLED, deploymentBuilder.isProcessValidationEnabled());
 
         // Actually deploy
+        // 执行部署发布
         processEngineConfiguration.getDeploymentManager().deploy(deployment, deploymentSettings);
 
         if (deploymentBuilder.getProcessDefinitionsActivationDate() != null) {

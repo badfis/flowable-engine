@@ -12,29 +12,11 @@
  */
 package org.flowable.engine.impl.util;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.StringUtils;
 import org.flowable.bpmn.constants.BpmnXMLConstants;
-import org.flowable.bpmn.model.BpmnModel;
-import org.flowable.bpmn.model.EventDefinition;
-import org.flowable.bpmn.model.EventSubProcess;
-import org.flowable.bpmn.model.ExtensionElement;
-import org.flowable.bpmn.model.FlowElement;
-import org.flowable.bpmn.model.FlowElementsContainer;
-import org.flowable.bpmn.model.MessageEventDefinition;
 import org.flowable.bpmn.model.Process;
-import org.flowable.bpmn.model.Signal;
-import org.flowable.bpmn.model.SignalEventDefinition;
-import org.flowable.bpmn.model.StartEvent;
-import org.flowable.bpmn.model.TimerEventDefinition;
-import org.flowable.bpmn.model.ValuedDataObject;
-import org.flowable.bpmn.model.VariableListenerEventDefinition;
+import org.flowable.bpmn.model.*;
 import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.flowable.common.engine.api.delegate.event.FlowableEventDispatcher;
@@ -64,7 +46,7 @@ import org.flowable.eventsubscription.service.impl.persistence.entity.MessageEve
 import org.flowable.eventsubscription.service.impl.persistence.entity.SignalEventSubscriptionEntity;
 import org.flowable.job.service.impl.persistence.entity.TimerJobEntity;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.*;
 
 /**
  * @author Tijs Rademakers
@@ -73,15 +55,15 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 public class ProcessInstanceHelper {
 
     public ProcessInstance createProcessInstance(ProcessDefinition processDefinition, String businessKey, String businessStatus, String processInstanceName,
-            Map<String, Object> variables, Map<String, Object> transientVariables) {
+                                                 Map<String, Object> variables, Map<String, Object> transientVariables) {
 
         return createProcessInstance(processDefinition, businessKey, businessStatus, processInstanceName, null, null,
                 variables, transientVariables, null, null, null, null, null, false);
     }
 
     public ProcessInstance createProcessInstance(ProcessDefinition processDefinition, String businessKey, String businessStatus, String processInstanceName,
-            String overrideDefinitionTenantId, String predefinedProcessInstanceId, Map<String, Object> variables, Map<String, Object> transientVariables,
-            String callbackId, String callbackType, String referenceId, String referenceType, String stageInstanceId, boolean startProcessInstance) {
+                                                 String overrideDefinitionTenantId, String predefinedProcessInstanceId, Map<String, Object> variables, Map<String, Object> transientVariables,
+                                                 String callbackId, String callbackType, String referenceId, String referenceType, String stageInstanceId, boolean startProcessInstance) {
 
         CommandContext commandContext = Context.getCommandContext();
         if (Flowable5Util.isFlowable5ProcessDefinition(processDefinition, commandContext)) {
@@ -113,8 +95,8 @@ public class ProcessInstanceHelper {
     }
 
     public ProcessInstance createAndStartProcessInstanceByMessage(ProcessDefinition processDefinition, String messageName, String businessKey,
-            String businessStatus, Map<String, Object> variables, Map<String, Object> transientVariables, String callbackId, String callbackType,
-            String referenceId, String referenceType) {
+                                                                  String businessStatus, Map<String, Object> variables, Map<String, Object> transientVariables, String callbackId, String callbackType,
+                                                                  String referenceId, String referenceType) {
 
         CommandContext commandContext = Context.getCommandContext();
         if (Flowable5Util.isFlowable5ProcessDefinition(processDefinition, commandContext)) {
@@ -155,44 +137,44 @@ public class ProcessInstanceHelper {
         return createAndStartProcessInstanceWithInitialFlowElement(processDefinition, businessKey, businessStatus, null, null, null, initialFlowElement,
                 process, variables, transientVariables, callbackId, callbackType, referenceId, referenceType, null, true);
     }
-    
+
     public ProcessInstance createAndStartProcessInstanceWithInitialFlowElement(ProcessDefinition processDefinition,
-            String businessKey, String businessStatus, String processInstanceName, FlowElement initialFlowElement, Process process,
-            Map<String, Object> variables,
-            Map<String, Object> transientVariables, boolean startProcessInstance) {
-        
+                                                                               String businessKey, String businessStatus, String processInstanceName, FlowElement initialFlowElement, Process process,
+                                                                               Map<String, Object> variables,
+                                                                               Map<String, Object> transientVariables, boolean startProcessInstance) {
+
         return createAndStartProcessInstanceWithInitialFlowElement(processDefinition, businessKey, businessStatus, processInstanceName, null, null,
                 initialFlowElement, process, variables, transientVariables, null, null, null, null, null, startProcessInstance);
     }
 
     public ProcessInstance createAndStartProcessInstanceWithInitialFlowElement(ProcessDefinition processDefinition,
-            String businessKey, String businessStatus, String processInstanceName,
-            String overrideDefinitionTenantId, String predefinedProcessInstanceId,
-            FlowElement initialFlowElement, Process process,
-            Map<String, Object> variables, Map<String, Object> transientVariables,
-            String callbackId, String callbackType, String referenceId, String referenceType,
-            String stageInstanceId, boolean startProcessInstance) {
+                                                                               String businessKey, String businessStatus, String processInstanceName,
+                                                                               String overrideDefinitionTenantId, String predefinedProcessInstanceId,
+                                                                               FlowElement initialFlowElement, Process process,
+                                                                               Map<String, Object> variables, Map<String, Object> transientVariables,
+                                                                               String callbackId, String callbackType, String referenceId, String referenceType,
+                                                                               String stageInstanceId, boolean startProcessInstance) {
 
         CommandContext commandContext = Context.getCommandContext();
-
+//        创建流程实例(初始化,然后设置值),创建参与者信息act_ru_identitylink.发布创建实体事件
         // Create the process instance
         String initiatorVariableName = null;
         if (initialFlowElement instanceof StartEvent) {
             initiatorVariableName = ((StartEvent) initialFlowElement).getInitiator();
         }
-        
+
         String tenantId;
         if (overrideDefinitionTenantId != null) {
             tenantId = overrideDefinitionTenantId;
         } else {
             tenantId = processDefinition.getTenantId();
         }
-        
+
         StartProcessInstanceBeforeContext startInstanceBeforeContext = new StartProcessInstanceBeforeContext(businessKey, businessStatus, processInstanceName,
                 callbackId, callbackType, referenceId, referenceType,
                 variables, transientVariables, tenantId, initiatorVariableName, initialFlowElement.getId(),
                 initialFlowElement, process, processDefinition, overrideDefinitionTenantId, predefinedProcessInstanceId);
-        
+
         ProcessEngineConfigurationImpl processEngineConfiguration = CommandContextUtil.getProcessEngineConfiguration(commandContext);
         if (processEngineConfiguration.getStartProcessInstanceInterceptor() != null) {
             processEngineConfiguration.getStartProcessInstanceInterceptor().beforeStartProcessInstance(startInstanceBeforeContext);
@@ -205,13 +187,13 @@ public class ProcessInstanceHelper {
                         startInstanceBeforeContext.getCallbackType(), startInstanceBeforeContext.getReferenceId(),
                         startInstanceBeforeContext.getReferenceType(), stageInstanceId, startInstanceBeforeContext.getTenantId(),
                         startInstanceBeforeContext.getInitiatorVariableName(), startInstanceBeforeContext.getInitialActivityId());
-
+//        插入act_hi_procinst表
         processEngineConfiguration.getHistoryManager().recordProcessInstanceStart(processInstance);
-        
+
         if (processEngineConfiguration.isLoggingSessionEnabled()) {
             BpmnLoggingSessionUtil.addLoggingData(LoggingSessionConstants.TYPE_PROCESS_STARTED, "Started process instance with id " + processInstance.getId(), processInstance);
         }
-
+//发布创建实体事件和创建实体变量事件
         FlowableEventDispatcher eventDispatcher = processEngineConfiguration.getEventDispatcher();
         boolean eventDispatcherEnabled = eventDispatcher != null && eventDispatcher.isEnabled();
         if (eventDispatcherEnabled) {
@@ -227,26 +209,26 @@ public class ProcessInstanceHelper {
                 processInstance.setVariable(varName, startInstanceBeforeContext.getVariables().get(varName));
             }
         }
-        
+
         if (startInstanceBeforeContext.getTransientVariables() != null) {
-            
+
             Object eventInstance = startInstanceBeforeContext.getTransientVariables().get(EventConstants.EVENT_INSTANCE);
             if (eventInstance instanceof EventInstance) {
-                EventInstanceBpmnUtil.handleEventInstanceOutParameters(processInstance, startInstanceBeforeContext.getInitialFlowElement(), 
-                                (EventInstance) eventInstance);
+                EventInstanceBpmnUtil.handleEventInstanceOutParameters(processInstance, startInstanceBeforeContext.getInitialFlowElement(),
+                        (EventInstance) eventInstance);
             }
-            
+
             for (String varName : startInstanceBeforeContext.getTransientVariables().keySet()) {
                 processInstance.setTransientVariable(varName, startInstanceBeforeContext.getTransientVariables().get(varName));
             }
         }
-        
+
         // Fire events
         if (eventDispatcherEnabled) {
-            eventDispatcher.dispatchEvent(FlowableEventBuilder.createEntityWithVariablesEvent(FlowableEngineEventType.ENTITY_INITIALIZED, 
+            eventDispatcher.dispatchEvent(FlowableEventBuilder.createEntityWithVariablesEvent(FlowableEngineEventType.ENTITY_INITIALIZED,
                     processInstance, startInstanceBeforeContext.getVariables(), false), processEngineConfiguration.getEngineCfgKey());
         }
-
+//        创建第一个执行节点,插入到act_ru_execution表中
         // Create the first execution that will visit all the process definition elements
         ExecutionEntity execution = processEngineConfiguration.getExecutionEntityManager().createChildExecution(processInstance);
         execution.setCurrentFlowElement(startInstanceBeforeContext.getInitialFlowElement());
@@ -256,17 +238,17 @@ public class ProcessInstanceHelper {
         if (startProcessInstance) {
             startProcessInstance(processInstance, commandContext, startInstanceBeforeContext.getVariables());
         }
-        
+
         if (callbackId != null) {
             callCaseInstanceStateChangeCallbacks(commandContext, processInstance, null, ProcessInstanceState.RUNNING);
         }
-        
+
         if (processEngineConfiguration.getStartProcessInstanceInterceptor() != null) {
-            StartProcessInstanceAfterContext startInstanceAfterContext = new StartProcessInstanceAfterContext(processInstance, execution, 
-                            startInstanceBeforeContext.getVariables(), startInstanceBeforeContext.getTransientVariables(), 
-                            startInstanceBeforeContext.getInitialFlowElement(), startInstanceBeforeContext.getProcess(), 
-                            startInstanceBeforeContext.getProcessDefinition());
-            
+            StartProcessInstanceAfterContext startInstanceAfterContext = new StartProcessInstanceAfterContext(processInstance, execution,
+                    startInstanceBeforeContext.getVariables(), startInstanceBeforeContext.getTransientVariables(),
+                    startInstanceBeforeContext.getInitialFlowElement(), startInstanceBeforeContext.getProcess(),
+                    startInstanceBeforeContext.getProcessDefinition());
+
             processEngineConfiguration.getStartProcessInstanceInterceptor().afterStartProcessInstance(startInstanceAfterContext);
         }
 
@@ -276,7 +258,7 @@ public class ProcessInstanceHelper {
     public void startProcessInstance(ExecutionEntity processInstance, CommandContext commandContext, Map<String, Object> variables) {
 
         Process process = ProcessDefinitionUtil.getProcess(processInstance.getProcessDefinitionId());
-        
+
         processAvailableEventSubProcesses(processInstance, process, commandContext);
 
         ExecutionEntity execution = processInstance.getExecutions().get(0); // There will always be one child execution created
@@ -289,7 +271,7 @@ public class ProcessInstanceHelper {
                     processEngineConfiguration.getEngineCfgKey());
         }
     }
-    
+
     public void processAvailableEventSubProcesses(ExecutionEntity parentExecution, FlowElementsContainer parentContainer, CommandContext commandContext) {
 
         for (FlowElement flowElement : parentContainer.getFlowElements()) {
@@ -323,20 +305,20 @@ public class ProcessInstanceHelper {
 
                         EventSubscriptionEntity eventSubscription = (EventSubscriptionEntity) processEngineConfiguration.getEventSubscriptionServiceConfiguration()
                                 .getEventSubscriptionService().createEventSubscriptionBuilder()
-                                        .eventType(eventType)
-                                        .executionId(eventRegistryExecution.getId())
-                                        .processInstanceId(eventRegistryExecution.getProcessInstanceId())
-                                        .activityId(eventRegistryExecution.getCurrentActivityId())
-                                        .processDefinitionId(eventRegistryExecution.getProcessDefinitionId())
-                                        .scopeType(ScopeTypes.BPMN)
-                                        .tenantId(eventRegistryExecution.getTenantId())
-                                        .configuration(CorrelationUtil.getCorrelationKey(BpmnXMLConstants.ELEMENT_EVENT_CORRELATION_PARAMETER, commandContext, eventRegistryExecution))
-                                        .create();
-                        
+                                .eventType(eventType)
+                                .executionId(eventRegistryExecution.getId())
+                                .processInstanceId(eventRegistryExecution.getProcessInstanceId())
+                                .activityId(eventRegistryExecution.getCurrentActivityId())
+                                .processDefinitionId(eventRegistryExecution.getProcessDefinitionId())
+                                .scopeType(ScopeTypes.BPMN)
+                                .tenantId(eventRegistryExecution.getTenantId())
+                                .configuration(CorrelationUtil.getCorrelationKey(BpmnXMLConstants.ELEMENT_EVENT_CORRELATION_PARAMETER, commandContext, eventRegistryExecution))
+                                .create();
+
                         CountingEntityUtil.handleInsertEventSubscriptionEntityCount(eventSubscription);
                     }
                 }
-                
+
                 continue;
             }
 
@@ -349,7 +331,7 @@ public class ProcessInstanceHelper {
 
             } else if (eventDefinition instanceof TimerEventDefinition) {
                 handleTimerEvent(eventDefinition, startEvent, parentExecution, processEngineConfiguration);
-            
+
             } else if (eventDefinition instanceof VariableListenerEventDefinition) {
                 handleVariableListenerEventSubscription(eventDefinition, startEvent, parentExecution, processEngineConfiguration, commandContext);
             }
@@ -359,23 +341,23 @@ public class ProcessInstanceHelper {
         if (eventDispatcher != null && eventDispatcher.isEnabled()) {
             for (EventSubscriptionEntity messageEventSubscription : messageEventSubscriptions) {
                 processEngineConfiguration.getEventDispatcher().dispatchEvent(FlowableEventBuilder.createMessageEvent(FlowableEngineEventType.ACTIVITY_MESSAGE_WAITING, messageEventSubscription.getActivityId(),
-                        messageEventSubscription.getEventName(), null, messageEventSubscription.getExecutionId(),
-                        messageEventSubscription.getProcessInstanceId(), messageEventSubscription.getProcessDefinitionId()),
+                                messageEventSubscription.getEventName(), null, messageEventSubscription.getExecutionId(),
+                                messageEventSubscription.getProcessInstanceId(), messageEventSubscription.getProcessDefinitionId()),
                         processEngineConfiguration.getEngineCfgKey());
             }
 
             for (EventSubscriptionEntity signalEventSubscription : signalEventSubscriptions) {
                 processEngineConfiguration.getEventDispatcher().dispatchEvent(FlowableEventBuilder.createSignalEvent(FlowableEngineEventType.ACTIVITY_SIGNAL_WAITING, signalEventSubscription.getActivityId(),
-                        signalEventSubscription.getEventName(), null, signalEventSubscription.getExecutionId(),
-                        signalEventSubscription.getProcessInstanceId(), signalEventSubscription.getProcessDefinitionId()),
+                                signalEventSubscription.getEventName(), null, signalEventSubscription.getExecutionId(),
+                                signalEventSubscription.getProcessInstanceId(), signalEventSubscription.getProcessDefinitionId()),
                         processEngineConfiguration.getEngineCfgKey());
             }
         }
     }
-    
-    protected void handleMessageEventSubscription(EventDefinition eventDefinition, StartEvent startEvent, ExecutionEntity parentExecution, 
-            List<EventSubscriptionEntity> messageEventSubscriptions, ProcessEngineConfigurationImpl processEngineConfiguration, CommandContext commandContext) {
-        
+
+    protected void handleMessageEventSubscription(EventDefinition eventDefinition, StartEvent startEvent, ExecutionEntity parentExecution,
+                                                  List<EventSubscriptionEntity> messageEventSubscriptions, ProcessEngineConfigurationImpl processEngineConfiguration, CommandContext commandContext) {
+
         MessageEventDefinition messageEventDefinition = (MessageEventDefinition) eventDefinition;
         BpmnModel bpmnModel = ProcessDefinitionUtil.getBpmnModel(parentExecution.getProcessDefinitionId());
         if (bpmnModel.containsMessageId(messageEventDefinition.getMessageRef())) {
@@ -390,23 +372,23 @@ public class ProcessInstanceHelper {
         String messageName = EventDefinitionExpressionUtil.determineMessageName(commandContext, messageEventDefinition, parentExecution);
         EventSubscriptionEntity eventSubscription = (EventSubscriptionEntity) processEngineConfiguration.getEventSubscriptionServiceConfiguration()
                 .getEventSubscriptionService().createEventSubscriptionBuilder()
-                        .eventType(MessageEventSubscriptionEntity.EVENT_TYPE)
-                        .eventName(messageName)
-                        .executionId(messageExecution.getId())
-                        .processInstanceId(messageExecution.getProcessInstanceId())
-                        .activityId(messageExecution.getCurrentActivityId())
-                        .processDefinitionId(messageExecution.getProcessDefinitionId())
-                        .tenantId(messageExecution.getTenantId())
-                        .create();
-        
+                .eventType(MessageEventSubscriptionEntity.EVENT_TYPE)
+                .eventName(messageName)
+                .executionId(messageExecution.getId())
+                .processInstanceId(messageExecution.getProcessInstanceId())
+                .activityId(messageExecution.getCurrentActivityId())
+                .processDefinitionId(messageExecution.getProcessDefinitionId())
+                .tenantId(messageExecution.getTenantId())
+                .create();
+
         CountingEntityUtil.handleInsertEventSubscriptionEntityCount(eventSubscription);
         messageEventSubscriptions.add(eventSubscription);
         messageExecution.getEventSubscriptions().add(eventSubscription);
     }
-    
-    protected void handleSignalEventSubscription(EventDefinition eventDefinition, StartEvent startEvent, ExecutionEntity parentExecution, 
-            List<EventSubscriptionEntity> signalEventSubscriptions, ProcessEngineConfigurationImpl processEngineConfiguration, CommandContext commandContext) {
-        
+
+    protected void handleSignalEventSubscription(EventDefinition eventDefinition, StartEvent startEvent, ExecutionEntity parentExecution,
+                                                 List<EventSubscriptionEntity> signalEventSubscriptions, ProcessEngineConfigurationImpl processEngineConfiguration, CommandContext commandContext) {
+
         SignalEventDefinition signalEventDefinition = (SignalEventDefinition) eventDefinition;
         BpmnModel bpmnModel = ProcessDefinitionUtil.getBpmnModel(parentExecution.getProcessDefinitionId());
         Signal signal = null;
@@ -424,24 +406,24 @@ public class ProcessInstanceHelper {
 
         EventSubscriptionEntity eventSubscription = (EventSubscriptionEntity) processEngineConfiguration.getEventSubscriptionServiceConfiguration()
                 .getEventSubscriptionService().createEventSubscriptionBuilder()
-                        .eventType(SignalEventSubscriptionEntity.EVENT_TYPE)
-                        .eventName(eventName)
-                        .signal(signal)
-                        .executionId(signalExecution.getId())
-                        .processInstanceId(signalExecution.getProcessInstanceId())
-                        .activityId(signalExecution.getCurrentActivityId())
-                        .processDefinitionId(signalExecution.getProcessDefinitionId())
-                        .tenantId(signalExecution.getTenantId())
-                        .create();
-        
+                .eventType(SignalEventSubscriptionEntity.EVENT_TYPE)
+                .eventName(eventName)
+                .signal(signal)
+                .executionId(signalExecution.getId())
+                .processInstanceId(signalExecution.getProcessInstanceId())
+                .activityId(signalExecution.getCurrentActivityId())
+                .processDefinitionId(signalExecution.getProcessDefinitionId())
+                .tenantId(signalExecution.getTenantId())
+                .create();
+
         CountingEntityUtil.handleInsertEventSubscriptionEntityCount(eventSubscription);
         signalEventSubscriptions.add(eventSubscription);
         signalExecution.getEventSubscriptions().add(eventSubscription);
     }
-    
-    protected void handleTimerEvent(EventDefinition eventDefinition, StartEvent startEvent, ExecutionEntity parentExecution, 
-            ProcessEngineConfigurationImpl processEngineConfiguration) {
-        
+
+    protected void handleTimerEvent(EventDefinition eventDefinition, StartEvent startEvent, ExecutionEntity parentExecution,
+                                    ProcessEngineConfigurationImpl processEngineConfiguration) {
+
         TimerEventDefinition timerEventDefinition = (TimerEventDefinition) eventDefinition;
 
         ExecutionEntity timerExecution = processEngineConfiguration.getExecutionEntityManager().createChildExecution(parentExecution);
@@ -450,24 +432,24 @@ public class ProcessInstanceHelper {
         timerExecution.setActive(false);
 
         TimerJobEntity timerJob = TimerUtil.createTimerEntityForTimerEventDefinition(timerEventDefinition, startEvent,
-                false, timerExecution, TriggerTimerEventJobHandler.TYPE, TimerEventHandler.createConfiguration(startEvent.getId(), 
+                false, timerExecution, TriggerTimerEventJobHandler.TYPE, TimerEventHandler.createConfiguration(startEvent.getId(),
                         timerEventDefinition.getEndDate(), timerEventDefinition.getCalendarName()));
 
         if (timerJob != null) {
             processEngineConfiguration.getJobServiceConfiguration().getTimerJobService().scheduleTimerJob(timerJob);
         }
     }
-    
-    protected void handleVariableListenerEventSubscription(EventDefinition eventDefinition, StartEvent startEvent, ExecutionEntity parentExecution, 
-            ProcessEngineConfigurationImpl processEngineConfiguration, CommandContext commandContext) {
-        
+
+    protected void handleVariableListenerEventSubscription(EventDefinition eventDefinition, StartEvent startEvent, ExecutionEntity parentExecution,
+                                                           ProcessEngineConfigurationImpl processEngineConfiguration, CommandContext commandContext) {
+
         VariableListenerEventDefinition variableListenerEventDefinition = (VariableListenerEventDefinition) eventDefinition;
 
         ExecutionEntity variableListenerExecution = processEngineConfiguration.getExecutionEntityManager().createChildExecution(parentExecution);
         variableListenerExecution.setCurrentFlowElement(startEvent);
         variableListenerExecution.setEventScope(true);
         variableListenerExecution.setActive(false);
-        
+
         String configuration = null;
         if (StringUtils.isNotEmpty(variableListenerEventDefinition.getVariableChangeType())) {
             ObjectNode configurationNode = processEngineConfiguration.getObjectMapper().createObjectNode();
@@ -477,16 +459,16 @@ public class ProcessInstanceHelper {
 
         EventSubscriptionEntity eventSubscription = (EventSubscriptionEntity) processEngineConfiguration.getEventSubscriptionServiceConfiguration()
                 .getEventSubscriptionService().createEventSubscriptionBuilder()
-                        .eventType("variable")
-                        .eventName(variableListenerEventDefinition.getVariableName())
-                        .configuration(configuration)
-                        .executionId(variableListenerExecution.getId())
-                        .processInstanceId(variableListenerExecution.getProcessInstanceId())
-                        .activityId(variableListenerExecution.getCurrentActivityId())
-                        .processDefinitionId(variableListenerExecution.getProcessDefinitionId())
-                        .tenantId(variableListenerExecution.getTenantId())
-                        .create();
-        
+                .eventType("variable")
+                .eventName(variableListenerEventDefinition.getVariableName())
+                .configuration(configuration)
+                .executionId(variableListenerExecution.getId())
+                .processInstanceId(variableListenerExecution.getProcessInstanceId())
+                .activityId(variableListenerExecution.getCurrentActivityId())
+                .processDefinitionId(variableListenerExecution.getProcessDefinitionId())
+                .tenantId(variableListenerExecution.getTenantId())
+                .create();
+
         CountingEntityUtil.handleInsertEventSubscriptionEntityCount(eventSubscription);
         variableListenerExecution.getEventSubscriptions().add(eventSubscription);
     }
@@ -501,7 +483,7 @@ public class ProcessInstanceHelper {
         }
         return variablesMap;
     }
-    
+
     public void callCaseInstanceStateChangeCallbacks(CommandContext commandContext, ProcessInstance processInstance, String oldState, String newState) {
         if (processInstance.getCallbackId() != null && processInstance.getCallbackType() != null) {
             Map<String, List<RuntimeInstanceStateChangeCallback>> caseInstanceCallbacks = CommandContextUtil
@@ -510,12 +492,12 @@ public class ProcessInstanceHelper {
             if (caseInstanceCallbacks != null && caseInstanceCallbacks.containsKey(processInstance.getCallbackType())) {
                 for (RuntimeInstanceStateChangeCallback caseInstanceCallback : caseInstanceCallbacks.get(processInstance.getCallbackType())) {
 
-                    caseInstanceCallback.stateChanged(new CallbackData(processInstance.getCallbackId(), 
-                        processInstance.getCallbackType(), processInstance.getId(), oldState, newState));
+                    caseInstanceCallback.stateChanged(new CallbackData(processInstance.getCallbackId(),
+                            processInstance.getCallbackType(), processInstance.getId(), oldState, newState));
 
                 }
             }
         }
     }
-    
+
 }

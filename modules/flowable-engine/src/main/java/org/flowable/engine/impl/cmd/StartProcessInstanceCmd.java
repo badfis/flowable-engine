@@ -117,10 +117,12 @@ public class StartProcessInstanceCmd<T> implements Command<ProcessInstance>, Ser
 
     @Override
     public ProcessInstance execute(CommandContext commandContext) {
+//        根据CommandContext获取流程引擎配置实现类ProcessEngineConfigurationImpl
         ProcessEngineConfigurationImpl processEngineConfiguration = CommandContextUtil.getProcessEngineConfiguration(commandContext);
         processInstanceHelper = processEngineConfiguration.getProcessInstanceHelper();
+//        获取流程定义
         ProcessDefinition processDefinition = getProcessDefinition(processEngineConfiguration, commandContext);
-
+//        启动流程实例
         ProcessInstance processInstance = null;
         if (hasFormData()) {
             processInstance = handleProcessInstanceWithForm(commandContext, processDefinition, processEngineConfiguration);
